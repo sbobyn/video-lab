@@ -16,3 +16,21 @@ These files are retained historical evidence, not new captures of review.2026110
 Exact capture commit was not recorded here; do not infer one from the package version.
 Visible old branding must be recaptured from an approved disposable current build,
 not repainted or relabelled as current. No new capture or branding generation was run.
+
+
+## Current home capture — 2026-11-07
+
+`home-20261107.png` is a real 1280×800 browser screenshot of the local home page,
+base main7b69862 with the Setup no-clobber source change. Browser/server build from
+the owned verification copy passed `pnpm check`; no other runtime source change.
+The logo/name and hero use the existing native SVG identity; no image generation
+or repainting. Bundled starter media is historical output, not newly generated AI.
+The incognito session used disposable data with no provider credentials and paid off.
+Actual workspace WebGL renderer: Apple M4 Max / ANGLE Metal.
+
+Staff QA opened Mountain Trail, changed a shot title via its input, reloaded and
+verified persistence, clicked Cut → Export film, played its 4.708s silent720p MP4,
+then exported/imported ZIP and verified the title and six media hashes. This uses
+an existing selected starter clip, not a recapture of modified geometry or new AI.
+Original historical screenshots/GIFs remain preserved above. Full user acceptance,
+provider/hardware integrations, responsive-layout qualification and Pages are pending.

@@ -13,9 +13,9 @@ capture path have verification evidence; full interactive acceptance is still pe
 Masked editing has known recovery/concurrent-edit risks and is excluded from the
 current review. [Version and test limits](docs/review-version.md) · [Status](docs/status.md)
 
-![Video Lab scene workspace — historical capture](docs/media/workspace.png)
+![Video Lab home: scene blockout, examples and local setup](docs/media/home-20261107.png)
 
-This is a real November 3 starter-scene capture, not a current-version screenshot.
+Captured from the local app on November 7 with bundled examples and paid generation disabled.
 [Media provenance and branding limits](docs/media/README.md).
 
 ## Quick start
