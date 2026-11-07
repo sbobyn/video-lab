@@ -1,4 +1,4 @@
-# Product onboarding plan — 2026-11-06
+# Product onboarding plan — 2026-11-07
 
 For an independent creator making a short previs/demo, the first useful result is
 an edited scene, a playable silent MP4 and an editable ZIP that survives reopening.
@@ -10,7 +10,29 @@ Repository version `0.1.0-review.20261106.2` carries the later README/setup chan
 they are not in that frozen package. macOS arm64/Node25.2.1 is verified for setup; other platforms,
 minimum Node, providers and complete human UI acceptance remain unqualified.
 
-## Existing work and proposed milestone
+## Current delivery and roadmap
+
+Repository baseline main7b69862 is followed by a focused Setup configuration-preservation
+fix and recovery regressions. Staff browser QA on November7 verified starter duplication,
+shot-title persistence after reload, silent film export/playback and editable ZIP restore.
+Actual human creative acceptance is still pending; no fresh paid generation was run.
+
+The existing [Web demo, local download and cloud access milestone](https://linear.app/sbobyn/project/video-lab-e5d16e6a9ac6)
+now contains four Backlog planning tickets:
+
+- [STE-3135](https://linear.app/sbobyn/issue/STE-3135): storage/accounts/privacy/cost decision before durable hosted editing.
+- [STE-3139](https://linear.app/sbobyn/issue/STE-3139): isolated editable browser examples, save/reopen/export; blocked by3135.
+- [STE-3144](https://linear.app/sbobyn/issue/STE-3144): project site, browser link and exact local download; final acceptance depends on3139.
+- [STE-3145](https://linear.app/sbobyn/issue/STE-3145): confirm Comfy integration/authentication/billing contract. Steven must establish integration access with Comfy before implementation.
+
+These are planned, not deployed features. Local review stays independent. STE-3088
+owns unfinished local creative acceptance/settings/recovery criteria; a documentation
+merge alone does not complete them. STE-3092 retains draft recovery/acceptance safety;
+STE-3089 provenance and STE-3093 preserved work remain separate. Renderer lifecycle
+status/creation-error follow-up belongs to3088; no unobserved texture failure is claimed.
+
+## Historical November6 reconciliation
+
 
 Live Linear read on November 6 found four project issues, all Backlog/unassigned,
 and **no milestones**. Propose one **DRAFT** milestone, **First useful scene and safe
@@ -49,7 +71,7 @@ November 6 evidence for the narrow tested paths. They do not mean complete UI or
 provider qualification. Original notes remain dated; current receipt links the result.
 The generated model table lists source presets/historical prices, not live availability.
 Setup's first-copy `.env` command must not overwrite an existing config; the detailed
-guide now explains this gap. Renderer construction/recovery proposals remain separate
+guide explains configuration ownership; the current Setup command now preserves existing files. Renderer construction/recovery proposals remain separate
 from measured hardware failures. The Blender environment proposal is also unapplied.
 
 No immediate product decision is needed to start the no-provider session. After

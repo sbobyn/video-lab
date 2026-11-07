@@ -186,3 +186,20 @@ expensive graphics QA must verify the actual device and preserve shared sessions
 ### User onboarding reconciliation — 2026-11-06
 
 See [onboarding plan](onboarding.md) for criterion states, exact existing issues, acceptance/dependencies and the proposed draft milestone. README is now the concise Git-first path; detailed configuration, providers, recovery and MCP instructions are linked. Existing STE-3088/STE-3092 were updated and read back; no new issues, milestone, closure or reassignment. The repository documentation follow-up does not change the frozen review archive.
+
+
+### Local night recovery/configuration work — 2026-11-07
+
+Follow-up based on main7b69862: retained accepted-vs-unknown generation recovery regression and guarded Setup’s first-use environment-copy command against overwriting existing configuration (STE-3088). Focused shell fixtures cover fresh config, repeated copy and missing template.
+
+STE-3092 draft recovery fixes are isolated as a patch against preserved PR1 head30b5ec8, not merged into this checkout or the live app. Tests distinguish later completed job reconciliation from unknown dispatch and make failed/missing preview retryable from verified composite bytes without dispatch or selection changes. Synthetic media/probes only; real codec/provider behavior remains unqualified. The concurrent acceptance publication race is still open and masked editing stays excluded from hands-on review. See the existing lead receipt for exact patch/candidate/check evidence.
+
+
+### November7 review-baseline completion
+
+Setup first-use copy now preserves existing `.env`; focused shell/recovery fixtures and
+the isolated typecheck/build gate passed. Current [home screenshot provenance](media/README.md#current-home-capture--2026-11-07)
+records actual hardware-backed browser QA. The [roadmap](onboarding.md#current-delivery-and-roadmap)
+links the existing web/local/cloud milestone and four planning issues. No hosted/OAuth
+feature, cleanup, human acceptance or product release is implied. PR1's isolated
+recovery patch remains outside main until the queued acceptance/publication race is fixed.

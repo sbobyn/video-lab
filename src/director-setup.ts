@@ -70,7 +70,7 @@ export function setupBody(s: Setup | null, phone: { available: boolean } | null)
     h('section', {}, h('h3', {}, 'Optional'),
       h('dl', { class: 'setup-opt' },
         h('dt', {}, 'Comfy Cloud key', h('span', { class: cloud ? 'ok' : '' }, cloud ? 'Set' : 'Not set')),
-        h('dd', {}, 'Create a key at comfy.org, then put it in .env beside package.json and restart. Never paste it into a project or chat.', code('cp .env.example .env\n# then set COMFY_CLOUD_API_KEY=… in .env')),
+        h('dd', {}, 'Create a key at comfy.org, then put it in .env beside package.json and restart. Never paste it into a project or chat.', code('test -e .env || cp -n .env.example .env\n# then edit COMFY_CLOUD_API_KEY in .env; preserve existing settings')),
         h('dt', {}, 'Local ComfyUI', h('span', { class: local ? 'ok' : '' }, local ? 'Reachable' : 'Not reachable')),
         h('dd', {}, 'Run ComfyUI (the desktop app or python main.py). Set PREVIS_COMFY_URL if it is not on port 8000.'),
         h('dt', {}, 'Phone camera over HTTPS', h('span', { class: phone?.available ? 'ok' : '' }, phone?.available ? 'Ready' : 'Not set up')),

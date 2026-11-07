@@ -50,8 +50,8 @@ qualification. A connection check does not dispatch generation.
 | Model, seed, authored inputs, chosen take | Project/run records; changing future defaults must not rewrite existing job inputs. |
 | Exports | Server assets and browser downloads; check your browser's destination. No persistent output-folder picker is claimed. |
 
-Do not copy over an existing `.env`. The current Setup copy-command is intended
-for first use only; preserve existing values when configuring an installed copy.
+Do not copy over an existing `.env`. Setup’s copy command preserves an existing
+file; edit its values deliberately when configuring an installed copy.
 Keep `pnpm start` unchanged when adding credentials or changing providers; restart
 only your own instance. Paid permission remains off unless explicitly enabled.
 
