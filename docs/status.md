@@ -52,7 +52,7 @@ Reviewed **2026-11-05**, branch `main`, source commit `9de3d8c83f3c0b465e7709e52
 
 ### Responsibility and entry points
 
-Video Lab is one repository: a local 3D scene/camera authoring workspace, model-specific generation preparation, take review and silent film/project export. The current browser entries are [start.html](../start.html) → [src/start.ts](../src/start.ts) and [director.html](../director.html) → [src/director.ts](../src/director.ts). [vite.config.ts](../vite.config.ts) also declares setup, phone and render pages; [package.json](../package.json) defines Node startup, browser/server builds and checks.
+Video Lab is one repository: a local 3D scene/camera authoring workspace, model-specific generation preparation, take review and silent film/project export. The current browser entries are [start.html](../start.html) → [src/start.ts](../src/start.ts) and [director.html](../director.html) → [src/director-entry.ts](../src/director-entry.ts) → [src/director.ts](../src/director.ts). [vite.config.ts](../vite.config.ts) also declares setup, phone and render pages; [package.json](../package.json) defines Node startup, browser/server builds and checks.
 
 [server/previs/server.mjs](../server/previs/server.mjs) is the composition root: it opens stores/services, serves the built app and HTTP routes on loopback, attaches the relay and shuts down workers. [openDirector / directorRoutes](../server/previs/director.mjs) own editable multi-project scene documents and operations. [openProject](../server/previs/store.mjs) is the separate engine/workbench store; it is not the entire director project collection. Legacy workbench routes require `PREVIS_LEGACY_ROUTES=1` and should not be confused with current director routes. Earlier camera-study descriptions in [standalone-previs.md](standalone-previs.md) are historical; use [director.md](director.md) for current product instructions.
 
@@ -156,6 +156,14 @@ addition is not in the already delivered `0.1.0-review.20261106.1` archive.
   `window.__previsResult`; [director-explain.ts](../src/director-explain.ts)
   `getRig` catches construction failure and `tick` calls `noGl`. Do not replace
   these existing error boundaries indiscriminately.
+  *Update (STE-3088):* [director-entry.ts](../src/director-entry.ts) now imports
+  `director.ts` once and, if loading or initialization rejects, shows an accessible
+  recovery view (Reload, Back to projects, Check setup outside the demo) and logs the
+  original error to the console. Graphics wording appears only when the error message
+  names WebGL/GPU. `boot()` keeps its own project-load error view. Not added: renderer
+  cleanup after a partial start (a first renderer, or the render loop if a later
+  initialization step fails, stays until the user leaves or reloads the page).
+  Fixture-tested only; no real renderer failure was exercised in a browser.
 - **Loss/restore:** Three r187 `WebGLRenderer` internally prevents default on loss,
   suppresses rendering while lost, and calls `initGLContext` on restore with saved
   shadow/info flags. Missing application listeners do not prove persistent texture
