@@ -163,7 +163,7 @@ addition is not in the already delivered `0.1.0-review.20261106.1` archive.
   names WebGL/GPU. `boot()` keeps its own project-load error view. Not added: renderer
   cleanup after a partial start (a first renderer, or the render loop if a later
   initialization step fails, stays until the user leaves or reloads the page).
-  Fixture-tested only; no real renderer failure was exercised in a browser.
+  Fixture-tested only; no real renderer failure was exercised in a browser. Recovery links follow the configured Vite base (including `/video-lab/`); the static demo hides Setup.
 - **Loss/restore:** Three r187 `WebGLRenderer` internally prevents default on loss,
   suppresses rendering while lost, and calls `initGLContext` on restore with saved
   shadow/info flags. Missing application listeners do not prove persistent texture

@@ -8,8 +8,8 @@ import ts from 'typescript';
 // (before boot() and its project-load catch) shows a recovery view; it never starts the workspace twice.
 const source = await readFile(new URL('../src/director-entry.ts', import.meta.url), 'utf8');
 
-async function load(director, { demo = false } = {}) {
-  const js = ts.transpileModule(source.replace('import.meta.env.VITE_DEMO', JSON.stringify(demo ? '1' : '')), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
+async function load(director, { demo = false, base = '/' } = {}) {
+  const js = ts.transpileModule(source.replace('import.meta.env.VITE_DEMO', JSON.stringify(demo ? '1' : '')).replace('import.meta.env.BASE_URL', JSON.stringify(base)), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;
   const node = tag => ({ tag, attrs: {}, children: [], listeners: {}, textContent: '', focused: false,
     setAttribute(k, v) { this.attrs[k] = v; }, append(...n) { this.children.push(...n); }, replaceChildren(...n) { this.children = n; },
     addEventListener(t, f) { this.listeners[t] = f; }, focus() { this.focused = true; } });
@@ -64,8 +64,8 @@ test('other initialization failures are not labelled as graphics problems', asyn
 });
 
 test('demo: no Setup link (the static demo has no server checks)', async () => {
-  const r = await load(() => { throw new Error('x'); }, { demo: true });
-  assert.deepEqual(r.find('a').map(a => a.attrs.href), ['/']);
+  const r = await load(() => { throw new Error('x'); }, { demo: true, base: '/video-lab/' });
+  assert.deepEqual(r.find('a').map(a => a.attrs.href), ['/video-lab/']);
 });
 
 test('director.html loads the entry; boot() keeps its own project-load error view', async () => {
