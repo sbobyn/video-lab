@@ -367,6 +367,10 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
       editId: receipt.editId,
       state: receipt.state,
       draftRevision: receipt.draftRevision,
+      // Read-only draft summary so a reopened draft is shown as saved, never rebuilt from an empty form.
+      shotId: receipt.shotId,
+      prompt: receipt.prompt,
+      seed: receipt.seed,
       sourceAssetId: receipt.sourceAssetId,
       sourceSha256: receipt.sourceSha256,
       maskHash: receipt.maskHash,
