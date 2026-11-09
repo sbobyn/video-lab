@@ -228,4 +228,13 @@ STE-3092 partial delivery. The Take lab region-edit dialog (`src/director-masked
 Evidence: `tests/masked-edit-ui.test.mjs` drives the real session controller with a fake server and storage (pointer identity/cap/failure, reopen, missing-preview flags, no auto-resume/generate, unknown vs refused vs paid-disabled submit, review id and acceptance id reuse, late responses after close); `tsc --noEmit` passes; existing masked-edit server suites rerun for the status fields. Not verified: the dialog in a browser, real codecs, Cloud provider jobs or human acceptance. Masked editing stays excluded from first use and the current review. Draft PR #1 is preserved and still uniquely holds its own `tests/masked-edit.test.mjs` resume/accept fixture and its unported server variant.
 
 
+Default-codec follow-up (2026-11-09, source 9916b96): one synthetic flat-colour
+1280×720/24 fps/81-frame H.264 source ran through the default FFmpeg/FFprobe path with no
+codec seams: prepare, refusal of an unknown saved job, completed-job restart/resume,
+outside-exact pre-encode check, missing-preview local retry, review API and default
+accept (81 frames, silent). The winner, cut and source stayed unchanged; the saved take
+and ZIP reimport hashes matched, and a restart replayed one take. Zero provider
+dispatches. This is a narrow default-path codec proof. It is not provider execution,
+browser playback or human visual acceptance.
+
 Lead qualification also covers close/reopen after an unknown submit: the server persists the original request identity before generation work, status returns it, retries reuse the saved binding, and a completed/uncertain generation job is reconciled by that exact identity after a receipt-write interruption. This is local durable-request replay, not a provider API idempotency or billing guarantee. Successful draft responses arriving after dialog close retain a browser pointer without redrawing. Real browser and provider acceptance remain open.
