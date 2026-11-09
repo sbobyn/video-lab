@@ -58,7 +58,7 @@ Video Lab is one repository: a local 3D scene/camera authoring workspace, model-
 
 ### Editable data-flow diagram
 
-Solid connections below describe source-inspected paths, not blanket runtime qualification. The publication edge marked unsafe is the audited exception to director-owned writes.
+Solid connections below describe source-inspected paths, not blanket runtime qualification. Updated 2026-11-09 from runtime source `d9b4b7c18bda4e87b339d33488f516ec4cc9cbca` on `t3/masked-edit-recovery-ui` (base main `444ab7185a145c68910a9d413c366aa2ae8918f4`): masked acceptance now uses `appendMaskedEditTake`, with durable per-edit receipt/request identity; this is a scoped amendment to the prior audit.
 
 ```mermaid
 flowchart TD
@@ -87,7 +87,10 @@ flowchart TD
   Blender[Blender-owned scene] --> Import[Blender handoff / model import]
   Import --> Director
   HTTP --> Mask[Masked crop / local composite / acceptance]
-  Mask -. unsafe snapshot publication .-> Project
+  Mask --> Director
+  Mask --> Receipts[(Masked receipts / composite / preview)]
+  Jobs -. quarantined patch .-> Mask
+  UI --> Pointers[(Browser-local receipt pointers)]
   Starters[Bundled starter index and media] --> Director
   Starters --> Snapshot[Demo build and snapshot]
   Snapshot --> Pages[Static Pages demo / demo-shim]

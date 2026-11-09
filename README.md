@@ -10,8 +10,8 @@ AI image/video generation is optional and requires a configured provider.
 
 **Preview software.** Local save/reopen, starter-media export and a short hardware
 capture path have verification evidence; full interactive acceptance is still pending.
-Masked editing has known recovery/concurrent-edit risks and is excluded from the
-current review. [Version and test limits](docs/review-version.md) · [Status](docs/status.md)
+Masked editing is excluded from the current review while browser, codec and
+provider acceptance remain pending. [Version and test limits](docs/review-version.md) · [Status](docs/status.md)
 
 ![Video Lab home: scene blockout, examples and local setup](docs/media/home-20261107.png)
 
@@ -47,8 +47,8 @@ Paid generation defaults off. No providers/models are installed automatically.
 **Already have the review archive?** Extract it into a new folder you choose, skip
 `git clone`, change into the extracted folder and use its own README. The immutable
 `0.1.0-review.20261106.1` package and these later local documentation edits are different
-snapshots. This branch carries the follow-up documentation; use the archive’s own
-README when testing that frozen version.
+snapshots. Current main includes later fixes; use the archive’s own README when testing
+that frozen version.
 
 ## Your first useful result
 
