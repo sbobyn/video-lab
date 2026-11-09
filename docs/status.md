@@ -31,7 +31,7 @@ Deferred branch work: quality/Finish (five commits, tip 10a7ec4), brand restrict
 
 ## PR and feature boundaries
 
-Draft PR #1 (30b5ec8) remains unmerged: masked-edit resume rejects uncertain receipts before checking a later completed job; preview encode failures can leave review media unavailable. STE-3092 tracks qualification. Do not describe the complete post-Cloud review/accept journey as qualified.
+Draft PR #1 (30b5ec8) remains unmerged. Its server resume/status/review-media endpoints were ported to main with the two recovery fixes (later-completed saved job after an uncertain receipt; verified local preview retry) on top of the queued acceptance from PR #4; PR #1's Director UI (resume/reopen panel and styles) is not on main. STE-3092 tracks qualification. Do not describe the complete post-Cloud review/accept journey as qualified.
 
 Archived three-vcam PR #6 has the same head and is superseded by #1. The predecessor is closed; its repository remains archived.
 
@@ -127,7 +127,7 @@ The relay and native integrations exist but are not freshly hardware-qualified. 
 
 Image/video LoRAs, scene/routing/prompt research and low-cost world/video models are related experimental inputs, not prerequisites for first-use stability. Sketch Lab and 3D Lab remain exploratory concepts with separate overlap review; no repo merger or new lead follows from similarity. No other private repository or recovery asset is embedded here.
 
-**Limits:** MIT code does not establish imported asset redistribution rights or provider/model permissions; consult [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) and asset provenance. Preserve format/tool compatibility and server-only credentials. The static audit found masked acceptance writes an old project snapshot after encoding outside director serialization, risking loss of intervening edits (`publishAcceptedTake` in [masked-edit.mjs](../server/previs/masked-edit.mjs)); a queued current-state append is proposed, not implemented. Draft #1 separately retains uncertain-receipt/missing-preview recovery gaps. No assertion that all writes are currently safe follows from the diagram.
+**Limits:** MIT code does not establish imported asset redistribution rights or provider/model permissions; consult [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) and asset provenance. Preserve format/tool compatibility and server-only credentials. The static audit found masked acceptance wrote an old project snapshot after encoding outside director serialization; since PR #4 (2026-11-08) acceptance appends to the current project on the director write queue (`appendMaskedEditTake` in [director.mjs](../server/previs/director.mjs)). Saved-job resume and preview retry are local-only and covered by synthetic fixtures (2026-11-09). No assertion that all writes are currently safe follows from the diagram.
 
 **Observed runtime evidence, 2026-11-05 at the inspected commit:** isolated HTTP startup and production-module save/reopen/edit/ZIP export/reimport passed; six focused persistence/format tests passed. Film export refused a shot without a rendered clip. Browser capture-to-film, hardware integrations, paid generation and current Pages deployment remain unqualified. Historical build checks are not a fresh artifact provenance assertion.
 
@@ -203,3 +203,9 @@ records actual hardware-backed browser QA. The [roadmap](onboarding.md#current-d
 links the existing web/local/cloud milestone and four planning issues. No hosted/OAuth
 feature, cleanup, human acceptance or product release is implied. PR1's isolated
 recovery patch remains outside main until the queued acceptance/publication race is fixed.
+
+### Masked-edit saved-job resume on main — 2026-11-09
+
+STE-3092 partial delivery. Server `resume`, richer `status` (resume/review/accept flags, preview state) and the ownership-checked review-media route were ported from draft PR #1 onto main's queued acceptance, with the isolated recovery fixes: an uncertain receipt is promoted only when the saved job later reports completed (missing or still-uncertain jobs stay blocked; nothing is redispatched), and a failed or missing preview is saved, shown as resumable and retried only from `composite.rgb` matching `candidateSha256`. Resume never reviews, accepts, selects a winner or changes the cut.
+
+Evidence: synthetic two-frame fixtures with injected probe/decode/encode seams, including restart → resume → review → accept against a real Director store with an intervening edit and zero generation dispatches. Not qualified: real codecs, Cloud provider jobs, the Director UI for resume (still only in PR #1) and human acceptance. Masked editing stays excluded from the current review.
