@@ -1,5 +1,23 @@
 # Review versions
 
+## Current main amendments — 2026-11-09
+
+The package label remains `0.1.0-review.20261106.2`; the Git commit identifies these
+later changes. Runtime source reviewed at `d9b4b7c18bda4e87b339d33488f516ec4cc9cbca`
+on `t3/masked-edit-recovery-ui`, based on main `444ab7185a145c68910a9d413c366aa2ae8918f4`:
+queued masked-take publication, saved-job/preview recovery and the saved-edit dialog,
+plus starter hash verification and a pinned future-bake guard. No starter was rebaked.
+See [current status](status.md) for the observed boundaries and [PR #7](https://github.com/sbobyn/video-lab/pull/7).
+
+Focused session/restart/safety fixtures, typecheck and production build passed in a
+disposable checkout with existing locked dependencies. The previously missing-relay
+HTTP/MCP tests also passed after that build. A test-only VM array assertion failed,
+was corrected, and the affected UI fixture passed. No new fresh install or full suite
+was run. The new dialog has not been exercised in a browser; full real-codec,
+provider and human acceptance remain open. Masked editing stays outside first use.
+The frozen archive below is unchanged; this is not a new downloadable release.
+
+
 ## Repository follow-up: 0.1.0-review.20261106.2
 
 This revision carries the streamlined README, linked setup/provider/recovery guides,
@@ -20,7 +38,7 @@ exact delivered bytes. `package.json` carries the review version so built app
 reports distinguish it from 0.1.0. Archives have no Git checkout; an empty commit
 field in app diagnostics is expected. Use this version label and archive checksum.
 
-## Included and held work
+## Included and held work in the frozen archive
 
 Included: baseline runtime, bundled media, maintained architecture/repo map in
 `docs/status.md`, release ownership instructions, corrected setup/provider/data/

@@ -304,6 +304,15 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
     }
   }
 
+  // A crash can leave the masked receipt prepared after generation durably accepted the request.
+  // Reconcile only the saved request identity; never search for a similar job or submit another one.
+  function recoveredJobReceipt(receipt) {
+    if (receipt.state !== 'prepared' || !receipt.submitRequestId) return receipt;
+    const job = findJob(receipt.submitRequestId);
+    if (!job || job.purpose !== 'masked-edit-patch' || ['prepared', 'quoted'].includes(job.status)) return receipt;
+    return { ...receipt, jobId: job.id, state: job.status === 'uncertain' ? 'uncertain' : 'submitted' };
+  }
+
   async function decodeRgbFrames(filePath, width, height, frameCount) {
     if (decodeFrames) return decodeFrames(filePath, width, height, frameCount);
     const raw = await run('ffmpeg', [
@@ -367,6 +376,10 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
       editId: receipt.editId,
       state: receipt.state,
       draftRevision: receipt.draftRevision,
+      // Read-only draft summary so a reopened draft is shown as saved, never rebuilt from an empty form.
+      shotId: receipt.shotId,
+      prompt: receipt.prompt,
+      seed: receipt.seed,
       sourceAssetId: receipt.sourceAssetId,
       sourceSha256: receipt.sourceSha256,
       maskHash: receipt.maskHash,
@@ -381,6 +394,7 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
       inputKey: receipt.inputKey,
       providerDispatch: Boolean(receipt.jobId),
       jobId: receipt.jobId || null,
+      submitRequestId: receipt.submitRequestId || null,
       patchJobId: receipt.patchJobId || null,
       patchResultId: receipt.patchResultId || null,
       patchSha256: receipt.patchSha256 || null,
@@ -402,7 +416,7 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
 
   async function status({ projectId, editId } = {}) {
     assertUuid(projectId, 'projectId');
-    const receipt = await loadReceipt(editId);
+    const receipt = recoveredJobReceipt(await loadReceipt(editId));
     if (receipt.projectId !== projectId) fail('Edit belongs to another project', 404);
     await director.get(projectId);
     const job = findJob(receipt.jobId);
@@ -428,6 +442,8 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
     let receipt = await loadReceipt(editId);
     if (receipt.projectId !== projectId) fail('Edit belongs to another project', 404);
     await director.get(projectId);
+    const recovered = recoveredJobReceipt(receipt);
+    if (recovered !== receipt) { receipt = recovered; await saveReceipt(receipt); }
 
     if (receipt.state === 'accepted') return statusPayload(receipt, findJob(receipt.jobId));
     if (receipt.state === 'ready-for-review') {
@@ -697,9 +713,12 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
       fail('Explicit approval with allowUnknownCharges is required', 400);
     }
 
-    const receipt = await loadReceipt(editId);
+    let receipt = await loadReceipt(editId);
     if (receipt.projectId !== projectId) fail('Edit belongs to another project', 404);
     if (receipt.draftRevision !== draftRevision) fail('draftRevision does not match the prepared edit', 409);
+    const recovered = recoveredJobReceipt(receipt);
+    if (recovered !== receipt) { receipt = recovered; await saveReceipt(receipt); }
+    if (receipt.submitRequestId && receipt.submitRequestId !== requestId) fail('This draft already has a saved submit request identity. Refresh status and reuse it; do not generate a new request.', 409);
     if (receipt.state !== 'prepared' && receipt.state !== 'submitted') {
       fail(`Cannot submit from state ${receipt.state}`, 409);
     }
@@ -714,29 +733,42 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
       fail('maxCostUsd is below the required reservation', 400);
     }
 
-    const support = await materializeSupportMedia(receipt);
-    const definition = await ensureMaskedDefinition();
-    const parameters = {
-      width: support.cropMeta.width,
-      height: support.cropMeta.height,
-      frames: support.cropMeta.frameCount,
-      seed: receipt.seed,
-      steps: 20,
-      fps: 24,
-      model: 'wan2.1_vace_14B_fp16.safetensors',
-    };
-    const bound = await genRoute('bind', {
-      revision: engineProject.get().revision,
-      definitionId: definition.id,
-      shotId: support.engineShotId,
-      assetBindings: {
-        sourceVideo: { assetId: support.cropAsset.id },
-        maskVideo: { assetId: support.maskAsset.id },
-      },
-      prompt: receipt.prompt,
-      parameters,
-      acceptTimingChange: true,
-    });
+    if (!receipt.submitRequestId) {
+      receipt.submitRequestId = requestId;
+      receipt.updatedAt = now();
+      await saveReceipt(receipt); // durable before any operation that could reach generation
+    }
+    let bound = receipt.workflowBindingId
+      ? { project: engineProject.get(), workflowBindingId: receipt.workflowBindingId }
+      : null;
+    if (!bound) {
+      const support = await materializeSupportMedia(receipt);
+      const definition = await ensureMaskedDefinition();
+      const parameters = {
+        width: support.cropMeta.width,
+        height: support.cropMeta.height,
+        frames: support.cropMeta.frameCount,
+        seed: receipt.seed,
+        steps: 20,
+        fps: 24,
+        model: 'wan2.1_vace_14B_fp16.safetensors',
+      };
+      bound = await genRoute('bind', {
+        revision: engineProject.get().revision,
+        definitionId: definition.id,
+        shotId: support.engineShotId,
+        assetBindings: {
+          sourceVideo: { assetId: support.cropAsset.id },
+          maskVideo: { assetId: support.maskAsset.id },
+        },
+        prompt: receipt.prompt,
+        parameters,
+        acceptTimingChange: true,
+      });
+      receipt.workflowBindingId = bound.workflowBindingId;
+      receipt.supportAssets = { cropAssetId: support.cropAsset.id, maskAssetId: support.maskAsset.id };
+      await saveReceipt(receipt); // retry the original binding, not a freshly bound copy
+    }
     const genInput = {
       requestId,
       revision: bound.project.revision,
@@ -762,7 +794,6 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
     receipt.jobId = job.id;
     receipt.submitRequestId = requestId;
     receipt.workflowBindingId = bound.workflowBindingId;
-    receipt.supportAssets = { cropAssetId: support.cropAsset.id, maskAssetId: support.maskAsset.id };
     receipt.generationFingerprint = quoted.fingerprint;
     receipt.updatedAt = now();
     receipt.providerDispatch = true;

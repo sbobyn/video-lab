@@ -58,7 +58,7 @@ Video Lab is one repository: a local 3D scene/camera authoring workspace, model-
 
 ### Editable data-flow diagram
 
-Solid connections below describe source-inspected paths, not blanket runtime qualification. The publication edge marked unsafe is the audited exception to director-owned writes.
+Solid connections below describe source-inspected paths, not blanket runtime qualification. Updated 2026-11-09 from runtime source `d9b4b7c18bda4e87b339d33488f516ec4cc9cbca` on `t3/masked-edit-recovery-ui` (base main `444ab7185a145c68910a9d413c366aa2ae8918f4`): masked acceptance now uses `appendMaskedEditTake`, with durable per-edit receipt/request identity; this is a scoped amendment to the prior audit.
 
 ```mermaid
 flowchart TD
@@ -87,7 +87,10 @@ flowchart TD
   Blender[Blender-owned scene] --> Import[Blender handoff / model import]
   Import --> Director
   HTTP --> Mask[Masked crop / local composite / acceptance]
-  Mask -. unsafe snapshot publication .-> Project
+  Mask --> Director
+  Mask --> Receipts[(Masked receipts / composite / preview)]
+  Jobs -. quarantined patch .-> Mask
+  UI --> Pointers[(Browser-local receipt pointers)]
   Starters[Bundled starter index and media] --> Director
   Starters --> Snapshot[Demo build and snapshot]
   Snapshot --> Pages[Static Pages demo / demo-shim]
@@ -211,3 +214,18 @@ STE-3092 partial delivery. Server `resume`, richer `status` (resume/review/accep
 Evidence: synthetic two-frame fixtures with injected probe/decode/encode seams, including restart → resume → review → accept against a real Director store with an intervening edit and zero generation dispatches. Not qualified: real codecs, Cloud provider jobs, the Director UI for resume (still only in PR #1) and human acceptance. Masked editing stays excluded from the current review.
 
 Receipt-mutating submit/resume/review/accept requests share a per-edit queue: a preview retry overlapping acceptance reads the accepted receipt after the encode instead of rolling it back. Different edits remain independent; synthetic overlap coverage accompanies the restart journey.
+
+### Masked-edit Take lab recovery UI on main — 2026-11-09
+
+STE-3092 partial delivery. The Take lab region-edit dialog (`src/director-masked-edit.ts`) now drives the saved server receipt instead of a one-shot form; the applicable recovery/review UI from draft PR #1 was adapted, not merged.
+
+- **Reopen:** "Save draft & quote" stores the draft on the local server; only after the server returns an `editId` does this browser remember a pointer (localStorage `previs.maskedEdit.receipts.v1`, last 40 across projects, keyed by project + shot + source take + source sha). The dialog lists every saved edit for that exact take; the Take lab button shows the count. Forgetting a pointer (cap, cleared site data, another browser/device) leaves the receipt on disk but unreachable from this UI; there is no server listing yet.
+- **Server authority:** status gained read-only `shotId`, `prompt` and `seed` (same ownership check). A reopened draft shows that saved summary and mask read-only; changing it starts a new draft and keeps the old one. Generate still needs the scope check, unknown-charge acknowledgement and an allowance at or above the saved reservation.
+- **Flags, not inference:** review lanes (Original / Edited / Mask), Record review and Save follow `canReview`/`canAccept`; a missing/failed preview shows the server message and an explicit local *Retry preview*. Resume, review and save run only on a click, one request at a time; there is no polling and nothing runs on open. Responses after close are dropped.
+- **Unknown outcomes:** a submit or save without a definite answer says UNKNOWN (never failed, cancelled, refunded or free), blocks Generate until a status refresh and reuses the same request/acceptance id so the server replays instead of acting twice. Uncertain jobs say UNKNOWN and offer no Generate or Resume. Saving never selects a winner or changes the cut.
+- **Truthful review:** "outside exact" is shown only as the pre-encode RGB check; the preview MP4 is lossy and is not presented as pixel-exact.
+
+Evidence: `tests/masked-edit-ui.test.mjs` drives the real session controller with a fake server and storage (pointer identity/cap/failure, reopen, missing-preview flags, no auto-resume/generate, unknown vs refused vs paid-disabled submit, review id and acceptance id reuse, late responses after close); `tsc --noEmit` passes; existing masked-edit server suites rerun for the status fields. Not verified: the dialog in a browser, real codecs, Cloud provider jobs or human acceptance. Masked editing stays excluded from first use and the current review. Draft PR #1 is preserved and still uniquely holds its own `tests/masked-edit.test.mjs` resume/accept fixture and its unported server variant.
+
+
+Lead qualification also covers close/reopen after an unknown submit: the server persists the original request identity before generation work, status returns it, retries reuse the saved binding, and a completed/uncertain generation job is reconciled by that exact identity after a receipt-write interruption. This is local durable-request replay, not a provider API idempotency or billing guarantee. Successful draft responses arriving after dialog close retain a browser pointer without redrawing. Real browser and provider acceptance remain open.

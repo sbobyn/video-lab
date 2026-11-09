@@ -204,3 +204,53 @@ test('restart resume of a later-completed uncertain job -> review -> accept keep
   assert.deepEqual({ dispatch, decodes, previews, encodes }, { dispatch: 0, decodes: 2, previews: 1, encodes: 1 });
   await rm(data, { recursive: true, force: true });
 });
+
+
+test('submit identity survives restart before media preparation and a different request is refused without dispatch', async () => {
+  const f = await fixture(), requestId = randomUUID();
+  const receipt = await f.api.loadReceipt(f.editId);
+  receipt.state = 'prepared'; receipt.jobId = null; receipt.quoteFingerprint = 'f'.repeat(64);
+  await writeFile(join(f.dir, 'receipt.json'), JSON.stringify(receipt));
+  const open = () => openMaskedEdit(f.root, { get: async () => structuredClone(f.project), assetFile: async () => join(f.root, 'source.mp4') }, { ...f.opts, probeVideo: async () => { throw Error('fixture preparation interruption'); }, engineProject: { get: () => ({ revision: 1 }) } });
+  const input = { projectId: f.projectId, editId: f.editId, requestId, draftRevision: 1, fingerprint: receipt.quoteFingerprint, maxCostUsd: 1, approval: { approved: true, allowance: { allowUnknownCharges: true } } };
+  // Inject a preparation interruption before a media subprocess or generation route can run.
+  await assert.rejects(open().submit(input), /fixture preparation interruption/);
+  assert.equal((await open().loadReceipt(f.editId)).submitRequestId, requestId, 'identity durable before any generation operation');
+  assert.equal((await open().status(input)).submitRequestId, requestId, 'fresh UI can read the original identity');
+  await assert.rejects(open().submit({ ...input, requestId: randomUUID() }), e => e.status === 409 && /saved submit request identity/.test(e.message));
+  assert.equal(f.counts().dispatch, 0);
+  await rm(f.root, { recursive: true, force: true });
+});
+
+test('restart reconciles a generation job accepted before the masked receipt was saved, without submitting again', async () => {
+  const f = await fixture(), before = structuredClone(f.project), input = { projectId: f.projectId, editId: f.editId };
+  const receipt = await f.api.loadReceipt(f.editId);
+  receipt.state = 'prepared'; receipt.jobId = null; receipt.submitRequestId = f.job.id;
+  await writeFile(join(f.dir, 'receipt.json'), JSON.stringify(receipt));
+  const st = await f.open().status(input);
+  assert.equal(st.uncertain, true); assert.equal(st.canGenerate, false);
+  await assert.rejects(f.open().resume(input), /uncertain/);
+  assert.equal((await f.open().loadReceipt(f.editId)).jobId, f.job.id);
+  f.job.status = 'completed'; f.job.results = [{ id: randomUUID(), kind: 'video', filename: f.patchFile, sha256: sha(f.patch), width: f.crop.w, height: f.crop.h, frameCount: 2 }];
+  assert.equal((await f.open().resume(input)).state, 'ready-for-review');
+  assert.equal(f.counts().dispatch, 0); assert.deepEqual(f.project, before);
+  await rm(f.root, { recursive: true, force: true });
+});
+
+test('retry reuses the saved binding and request identity instead of binding or dispatching a second job', async () => {
+  const f = await fixture(), receipt = await f.api.loadReceipt(f.editId), requestId = randomUUID(), bindingId = randomUUID(), calls = [];
+  Object.assign(receipt, { state: 'prepared', jobId: null, submitRequestId: requestId, workflowBindingId: bindingId, quoteFingerprint: 'f'.repeat(64) });
+  await writeFile(join(f.dir, 'receipt.json'), JSON.stringify(receipt));
+  const api = openMaskedEdit(f.root, { get: async () => f.project }, { engineProject: { get: () => ({ revision: 4 }) }, generation: {
+    list: () => [], route: async (path, input) => {
+      calls.push(path); assert.equal(input.requestId, requestId); assert.equal(input.workflowBindingId, bindingId);
+      if (path.endsWith('/quote')) return { job: { fingerprint: 'g'.repeat(64), quote: { estimate: 0.1, reservationRequiredUsd: 0.11 } } };
+      assert.ok(path.endsWith('/submit')); return { job: { id: requestId } }; // generation authority's existing request replay
+    },
+  } });
+  const input = { projectId: f.projectId, editId: f.editId, requestId, draftRevision: 1, fingerprint: receipt.quoteFingerprint, maxCostUsd: 1, approval: { approved: true, allowance: { allowUnknownCharges: true } } };
+  assert.equal((await api.submit(input)).jobId, requestId);
+  assert.equal((await api.submit(input)).replay, true);
+  assert.deepEqual(calls, ['/api/generation/quote', '/api/generation/submit']);
+  await rm(f.root, { recursive: true, force: true });
+});

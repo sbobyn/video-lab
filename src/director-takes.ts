@@ -12,7 +12,7 @@ import { explainStale, staleText } from '../shared/regen.mjs';
 import { GRADER_PRICES } from '../shared/tiers.mjs';
 import type { CameraSource } from '../shared/camera-source.mjs';
 import { defaultPicks, togglePick, MAX_LANES, FPS, stepFrame, laneTime, gridColumns, timecode, costText, settingParts, gradeText, directionText, duration } from './director-takes-core';
-import { openMaskedEdit, maskedEditEligibility } from './director-masked-edit';
+import { openMaskedEdit, maskedEditEligibility, savedMaskedEditReceipts, browserStorage } from './director-masked-edit';
 
 export type TakeLabCtx = {
   project(): DirectorProject;
@@ -221,11 +221,13 @@ export async function openTakeLab(ctx: TakeLabCtx, shotId: string, initial?: 'vi
       kind: 'workflow-result', mime: 'video/mp4',
       width: v.media.width, height: v.media.height, fps: v.media.fps, frameCount: v.media.frames, duration: v.media.duration,
     } as Asset).ok;
+    // Saved drafts/receipts this browser remembers for this exact take; the dialog lists them to reopen.
+    const savedEdits = canEdit ? savedMaskedEditReceipts(browserStorage(), { projectId: P().id, shotId: s.id, sourceAssetId: tk.id, sourceSha256: assetRec?.sha256 }).length : 0;
     const editBtn = canEdit ? h('button', {
       class: 'btn sm tk-edit-open', type: 'button',
-      'aria-label': `Edit region: ${name}`,
+      'aria-label': `Edit region${savedEdits ? ` (${savedEdits} saved)` : ''}: ${name}`,
       title: 'Paint a fixed screen region and generate a Cloud crop edit. Original and cut stay unchanged.',
-    }, 'Edit region…') : null;
+    }, savedEdits ? `Edit region · ${savedEdits} saved…` : 'Edit region…') : null;
     if (editBtn) editBtn.onclick = () => void openMaskedEdit({ project: P, assetUrl: ctx.assetUrl, focusReturn: editBtn }, s.id, v);
     return h('section', { class: 'tk-lane', 'aria-label': name },
       h('div', { class: 'tk-media' }, media, h('span', { class: 'tk-tag' }, tk.label), ended),
