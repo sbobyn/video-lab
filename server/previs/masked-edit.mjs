@@ -1,11 +1,12 @@
 // Masked-edit: prepare / status / review / accept (local) + submit (generation authority).
 // Submit builds crop/mask support media and delegates paid dispatch to generation; no parallel dispatcher.
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile, access, copyFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { spawn } from 'node:child_process';
 import { atomicJson } from './atomic.mjs';
+import { keyedLock } from './keyed-lock.mjs';
 import { inspectOutputVideo } from './media-inspect.mjs';
 import { builtInPresets } from './presets.mjs';
 import { validateWorkflowDefinition } from './workflows.mjs';
@@ -18,7 +19,6 @@ import {
 } from '../../shared/masked-edit.mjs';
 import { cameraSourceForMaskedEdit } from '../../shared/camera-source.mjs';
 
-const UUID = /^[a-f0-9-]{36}$/i;
 const MASKED_PRESET_ID = 'wan-vace-14b-masked-v1';
 const ALLOWED_FILES = new Set([
   'receipt.json', 'mask.bin', 'mask.png', 'support.bin', 'crop.json',
@@ -101,8 +101,26 @@ export function safeEditPath(editRoot, name) {
   return full;
 }
 
-export function openMaskedEdit(dataRoot, director, { log = () => {}, generation = null, engineProject = null } = {}) {
+/** Encode quarantined composite RGB frames to an MP4 (local ffmpeg only) and inspect the result. */
+async function encodeComposite({ rawPath, outMp4, width, height, fps, frameCount }) {
+  await run('ffmpeg', [
+    '-hide_banner', '-loglevel', 'error', '-y',
+    '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${width}x${height}`, '-r', String(fps),
+    '-i', rawPath,
+    '-frames:v', String(frameCount),
+    '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p',
+    '-movflags', '+faststart', outMp4,
+  ]);
+  const mp4 = await readFile(outMp4);
+  let meta;
+  try { meta = await inspectOutputVideo(mp4, { mime: 'video/mp4' }); }
+  catch (e) { fail(`Encoded candidate could not be inspected: ${e.message}`); }
+  return { mp4, meta };
+}
+
+export function openMaskedEdit(dataRoot, director, { log = () => {}, generation = null, engineProject = null, encode = encodeComposite } = {}) {
   const root = resolve(dataRoot);
+  const acceptLock = keyedLock(); // one acceptance at a time per edit; different edits run concurrently
   const editsRoot = join(root, 'masked-edits');
   const genRoute = generation?.route ? (op, input) => generation.route(`/api/generation/${op}`, input) : null;
 
@@ -643,7 +661,9 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
     return { reviewId, editId, state: receipt.state, candidateSha256, sourceSha256 };
   }
 
-  async function accept(input = {}) {
+  const accept = (input = {}) => acceptLock(String(input.editId || ''), () => acceptOnce(input));
+
+  async function acceptOnce(input = {}) {
     const projectId = assertUuid(input.projectId, 'projectId');
     const editId = assertUuid(input.editId, 'editId');
     const candidateSha256 = String(input.candidateSha256 || '');
@@ -666,6 +686,7 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
 
     const project = await director.get(projectId);
     const parent = (project.assets || []).find(a => a.id === receipt.sourceAssetId);
+    if (!parent) fail('Parent take is no longer in the project; nothing was saved.', 409, 'source');
     const check = validateAcceptanceState({
       receipt, candidateSha256, sourceSha256: receipt.sourceSha256, reviewId,
       project, shotId: receipt.shotId, parentAsset: parent,
@@ -681,24 +702,16 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
     const flat = await readFile(safeEditPath(dir, 'composite.rgb'));
     if (sha(flat) !== candidateSha256) fail('Candidate bytes no longer match candidateSha256', 409);
 
-    // Encode quarantined RGB frames to a durable project MP4 (local only).
+    // Encode quarantined RGB frames to an MP4 (local only). The project is NOT held during the encode;
+    // the take is appended to the current project afterwards on the director queue.
     const assetId = randomUUID();
     const frameCount = receipt.sourceTiming.frameCount;
-    const tmpRaw = join(dir, 'composite.rgb');
     const outMp4 = join(dir, `${assetId}.mp4`);
-    await run('ffmpeg', [
-      '-hide_banner', '-loglevel', 'error', '-y',
-      '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', `${ELIGIBLE_WIDTH}x${ELIGIBLE_HEIGHT}`, '-r', String(receipt.sourceTiming.fps || 24),
-      '-i', tmpRaw,
-      '-frames:v', String(frameCount),
-      '-an', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p',
-      '-movflags', '+faststart', outMp4,
-    ]);
-    const mp4 = await readFile(outMp4);
+    const { mp4, meta: encodedMeta } = await encode({
+      rawPath: join(dir, 'composite.rgb'), outMp4,
+      width: ELIGIBLE_WIDTH, height: ELIGIBLE_HEIGHT, fps: receipt.sourceTiming.fps || 24, frameCount,
+    });
     const mp4Sha = sha(mp4);
-    let encodedMeta;
-    try { encodedMeta = await inspectOutputVideo(mp4, { mime: 'video/mp4' }); }
-    catch (e) { fail(`Encoded candidate could not be inspected: ${e.message}`); }
     if (encodedMeta.frameCount !== frameCount) fail(`Encoded frame count ${encodedMeta.frameCount} ≠ ${frameCount}`, 422, 'timing');
     if (encodedMeta.width !== ELIGIBLE_WIDTH || encodedMeta.height !== ELIGIBLE_HEIGHT) fail('Encoded dimensions changed', 422, 'timing');
     if (encodedMeta.audio) fail('Encoded candidate must be silent', 422, 'timing');
@@ -726,7 +739,7 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
     });
     maskedEdit.acceptedAt = now();
 
-    // Publish project-owned bytes without touching winner/cut (no director.mjs hook in foundation).
+    // Appended by the director on its write queue against the current project; winner/cut untouched.
     const fileName = `${assetId}.mp4`;
     const assetFile = `assets/${fileName}`;
     const asset = {
@@ -754,52 +767,17 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
         maskedEdit,
       },
     };
-    const published = await publishAcceptedTake({ projectId, asset, bytes: mp4, prior: project });
+    if (typeof director.appendMaskedEditTake !== 'function') fail('Director cannot save masked-edit takes', 500);
+    const published = await director.appendMaskedEditTake(projectId, { asset, bytes: mp4 });
+    const saved = published.asset; // on replay: the take an earlier attempt already saved for this edit
 
     receipt.state = 'accepted';
-    receipt.acceptance = { id: acceptanceId, assetId, candidateSha256, acceptedAt: maskedEdit.acceptedAt, encodeSha256: mp4Sha };
+    receipt.acceptance = { id: acceptanceId, assetId: saved.id, candidateSha256, acceptedAt: saved.source.maskedEdit.acceptedAt || maskedEdit.acceptedAt, encodeSha256: saved.sha256 };
     receipt.updatedAt = now();
     await saveReceipt(receipt);
-    try { await copyFile(outMp4, safeEditPath(dir, 'candidate.mp4')); } catch { /* optional recovery copy */ }
-    log(`[masked-edit] accepted ${editId} → take ${assetId} (cut unchanged)`);
-    return { accepted: true, replay: false, assetId, editId, revision: published.revision, project: published.project };
-  }
-
-  /**
-   * Append one workflow-result take under data/director/<id>/ and refresh the director cache.
-   * Does not call winnerOps / set_edit / set_winner. Foundation-only until director gains accept-composite.
-   */
-  async function publishAcceptedTake({ projectId, asset, bytes, prior }) {
-    assertUuid(projectId, 'projectId');
-    if ((prior.assets || []).some(a => a.id === asset.id)) {
-      return { project: prior, revision: prior.revision, replay: true };
-    }
-    const projectDir = join(root, 'director', projectId);
-    const assetsDir = join(projectDir, 'assets');
-    await mkdir(assetsDir, { recursive: true });
-    const dest = join(assetsDir, `${asset.id}.mp4`);
-    // Refuse path tricks — asset.id is a UUID from randomUUID().
-    if (!UUID.test(asset.id)) fail('asset id must be a UUID');
-    try { await access(dest); fail('Asset file already exists', 409); } catch (e) { if (e.status) throw e; }
-    await writeFile(dest, bytes, { flag: 'wx', mode: 0o600 });
-
-    const winnerBefore = prior.shots.find(s => s.id === asset.shotId)?.winner ?? null;
-    const cutBefore = structuredClone(prior.edit?.clips || null);
-    const next = structuredClone(prior);
-    (next.assets ||= []).push(asset);
-    next.revision = (Number(next.revision) || 0) + 1;
-    next.updatedAt = now();
-    await atomicJson(join(projectDir, 'project.json'), next);
-
-    // Bust openDirector's in-memory cache without editing director.mjs (archive drops the entry).
-    await director.archive(projectId);
-    const restored = await director.restore(projectId);
-    const p = restored.project;
-    const shot = p.shots.find(s => s.id === asset.shotId);
-    if ((shot?.winner ?? null) !== winnerBefore) fail('Accept must not change the winner', 500);
-    if (JSON.stringify(p.edit?.clips || null) !== JSON.stringify(cutBefore)) fail('Accept must not change the cut', 500);
-    if (!(p.assets || []).some(a => a.id === asset.id)) fail('Accepted take missing after publish', 500);
-    return { project: p, revision: p.revision, replay: false };
+    if (!published.replay) { try { await copyFile(outMp4, safeEditPath(dir, 'candidate.mp4')); } catch { /* optional recovery copy */ } }
+    log(`[masked-edit] accepted ${editId} → take ${saved.id}${published.replay ? ' (already saved)' : ''} (cut unchanged)`);
+    return { accepted: true, replay: published.replay, assetId: saved.id, editId, revision: published.project.revision, project: published.project };
   }
 
   async function routes(method, url, input) {

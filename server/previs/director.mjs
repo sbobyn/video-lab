@@ -649,6 +649,34 @@ export async function openDirector(root, options = {}) {
       }
       return added ? { project: await save(p), added } : { project: p, added: 0 };
     }),
+    // Masked-edit acceptance: append one encoded take to the CURRENT project on the write queue, so shot, cut and other
+    // edits made while it encoded are kept. Parent/shot are revalidated here; winner and cut are never touched.
+    // One take per edit: a replay (concurrent accept, or a retry after a crash before the receipt was saved) returns it.
+    appendMaskedEditTake: (id, { asset, bytes }) => serial(async () => {
+      const p = structuredClone(await load(id));
+      const me = asset?.source?.maskedEdit;
+      if (!me?.editId || !/^[a-f0-9]{64}$/.test(me.compositeSha256 || '')) fail('Masked-edit provenance is required');
+      const prior = (p.assets || []).find(a => a.source?.maskedEdit?.editId === me.editId);
+      if (prior) {
+        if (prior.source.maskedEdit.compositeSha256 !== me.compositeSha256) fail('This edit was already saved as a take from a different result', 409);
+        return { project: structuredClone(p), asset: structuredClone(prior), replay: true };
+      }
+      if (!uuid.test(asset.id || '') || asset.kind !== 'workflow-result' || asset.mime !== 'video/mp4' || asset.file !== `assets/${asset.id}.mp4`) fail('Invalid masked-edit take');
+      if (!Buffer.isBuffer(bytes) || sha(bytes) !== asset.sha256) fail('Take bytes do not match their digest', 409);
+      const shot = p.shots.find(s => s.id === asset.shotId);
+      if (!shot) fail('The shot was removed while the edit was saving; nothing was added.', 409);
+      const parent = (p.assets || []).find(a => a.id === me.parentAssetId);
+      if (!parent || parent.id !== asset.source.sourceAssetId) fail('The source take was removed while the edit was saving; nothing was added.', 409);
+      if (parent.shotId !== shot.id || parent.sha256 !== me.parentSha256) fail('The source take changed while the edit was saving; nothing was added.', 409);
+      if (parent.source?.maskedEdit) fail('Chained masked edits are not supported in v1', 409);
+      await mkdir(join(dir, p.id, 'assets'), { recursive: true });
+      const dest = join(dir, p.id, asset.file);
+      if (existsSync(dest)) fail('Asset file already exists', 409);
+      await saveResultBytes(dest, bytes); // durable before the project lists it
+      (p.assets ||= []).push(structuredClone(asset));
+      const saved = await save(p);
+      return { project: saved, asset: structuredClone(asset), replay: false };
+    }),
     async assetFile(projectId, file) {
       if (!uuid.test(projectId) || !/^[a-f0-9-]{36}\.(mp4|webm|mov|png)$/.test(file)) fail('Not found', 404);
       return join(dir, projectId, 'assets', file);
