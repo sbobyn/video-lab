@@ -147,10 +147,14 @@ test('mocked submit path: trusted estimate reserves; paid disabled refuses befor
   );
   const expected = estimateMaskedVaceCost({ width: 640, height: 480, frames: 81 });
   assert.equal(fromSources.estimate, expected.estimate);
-  // README documents the shipped fixed-region path (post Cloud qualification).
+  // The Director guide documents the fixed-region path and its source limits; the README keeps masked
+  // editing excluded from the current review until resume/review/accept is qualified end to end.
+  const guide = await readFile(new URL('../docs/director.md', import.meta.url), 'utf8');
+  assert.match(guide, /Edit region/i);
+  assert.match(guide, /1280×720/);
+  assert.match(guide, /81-frame/);
   const readme = await readFile(new URL('../README.md', import.meta.url), 'utf8');
-  assert.match(readme, /Edit region/i);
-  assert.match(readme, /1280×720/);
+  assert.match(readme, /Masked editing[^.]*excluded from the\s+current review/i);
   assert.doesNotMatch(readme, /experimental pipeline is not yet included in the app/i);
   void png;
 });
