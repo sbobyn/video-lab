@@ -1,0 +1,184 @@
+{
+  "schema": 1,
+  "recipe": {
+    "path": "scripts/blender/library-blockouts.json",
+    "sha256": "ecd44866324421f12699a11e46b779ce9cf316d8aa827f0e8d9fa392f3a39eb5",
+    "ids": 29
+  },
+  "producer": {
+    "status": "unknown",
+    "note": "No bake has run under the pinned guard. The producer commit, inputs and Node version that made these exact bytes were not recorded and have not been reproduced; nothing here certifies them.",
+    "evidence": [
+      {
+        "ids": [
+          "anchor",
+          "fan",
+          "operator",
+          "player",
+          "race-car"
+        ],
+        "firstCommit": "507b42c81df2ce44266cd9bf2bd03a65cc70de3d",
+        "claim": "commit message names sbobyn/beret-parts 84cb2af (resolves to 84cb2afde32b9561d390ea2c4cc9229e2ce9a179); recipe sha256 matches that commit's recipes/previs-starter-blockouts.json. Unverified claim: output bytes not reproduced."
+      },
+      {
+        "ids": [
+          "desk",
+          "light",
+          "basketball",
+          "pine",
+          "studio-camera",
+          "court",
+          "paint",
+          "track",
+          "finish",
+          "studio-floor",
+          "grass",
+          "river",
+          "stands",
+          "barrier",
+          "press-box",
+          "screen",
+          "video-wall",
+          "desk-panel",
+          "rim",
+          "circle",
+          "lake",
+          "support",
+          "flag-stand"
+        ],
+        "firstCommit": "a5ba8e00175c426d9747cf8a367ad392d6650b8f",
+        "claim": "baked from beret-parts with an earlier 25-id recipe; no producer commit recorded."
+      },
+      {
+        "ids": [
+          "backboard"
+        ],
+        "firstCommit": "f90b84d4d3838ea9c0d2d8411ea7c29bc38139b0",
+        "claim": "current bytes first appear in a publish snapshot after the library bake and animation pass merged; producer unknown."
+      }
+    ],
+    "notLibrary": [
+      "eagle",
+      "elk",
+      "terrain"
+    ]
+  },
+  "outputs": {
+    "desk": {
+      "sha256": "e092f360d574008139e8fa1869b74d5bd276e1400c0ddac2052389071c625078",
+      "bytes": 19992
+    },
+    "light": {
+      "sha256": "a06cd54079f1f840a066ef3b722f049a2f12c30a7bc1c8b4d866b56c96058c71",
+      "bytes": 13952
+    },
+    "basketball": {
+      "sha256": "cc1cec7ed0bbfbe79c59c7de261a8dee353da6f97bcde9cd0507381272c3fd49",
+      "bytes": 88228
+    },
+    "race-car": {
+      "sha256": "de07edd650b6716d94d69a1910397ddf6b8b472c57a42a5957aac2fdd1404ba7",
+      "bytes": 68752
+    },
+    "pine": {
+      "sha256": "cfc3943d9610c849dc96367d5dcb79c2d97795167f4ae3544498dcc470c49967",
+      "bytes": 9532
+    },
+    "studio-camera": {
+      "sha256": "0c474a5376bddebbb394320f5126c98732999603a2292af1c545b1e75fb01799",
+      "bytes": 21184
+    },
+    "court": {
+      "sha256": "b9256da021ff4a7bd067093a8196f457aaefac4955d7a77bb38da07eb1f74f2f",
+      "bytes": 61424
+    },
+    "paint": {
+      "sha256": "250fdd265daa6d65c96da5fc281ceb19204a377c690b92de6b0ad18a884e44e6",
+      "bytes": 5560
+    },
+    "track": {
+      "sha256": "8e7b3b981f565f269415e16682d6b3ec172ba1e632b1dfe7e9e5ef4074e1cae9",
+      "bytes": 7796
+    },
+    "finish": {
+      "sha256": "ab20e7403d97944cd8f57e60ebcf6027b8f0a3ed29921d2cad8e4eb0b44c0e16",
+      "bytes": 19324
+    },
+    "studio-floor": {
+      "sha256": "3c00e74473aa1e87c823a4ec919e9bbfb98808bb84793eb72b5d902ef324c8ed",
+      "bytes": 5560
+    },
+    "grass": {
+      "sha256": "bfdd24d30ae4b489e7ca2571d17a9ba1d20b6164b4fbd2143ac07c63aba161db",
+      "bytes": 8968
+    },
+    "river": {
+      "sha256": "3fa1fb49b7a7885ff6efd015a6dec20e788303df6a2ac9c0eff5203306f19efc",
+      "bytes": 3832
+    },
+    "stands": {
+      "sha256": "ee16274f571a2c36b8943120445e37d6f8a46f00863db505a07d832ea8dd100b",
+      "bytes": 78976
+    },
+    "barrier": {
+      "sha256": "a90b92f506ba8f18dcb53400543bb5cb79e675a6d98ba9d74b848ae7f9b13606",
+      "bytes": 9296
+    },
+    "press-box": {
+      "sha256": "b85d2569d43ba17bde523cc66e94aea2325d0a64a2e18a9d2dfccb4f61cd1ccf",
+      "bytes": 14480
+    },
+    "screen": {
+      "sha256": "882c62d65f1af57d6f752d4b82cff3f6954141341edd93c033168d80591a095a",
+      "bytes": 10720
+    },
+    "video-wall": {
+      "sha256": "51802fc09c7fa9bb60aaa530b1996c255eccf5f80e42e3ee1f6325a5971c37ef",
+      "bytes": 16436
+    },
+    "desk-panel": {
+      "sha256": "20adcf80962f00eb351dd78ef0a8be5815fb3a7486d18bfeb260e6ff12937cc5",
+      "bytes": 10716
+    },
+    "rim": {
+      "sha256": "2fa3df6f792cbe84d3b55fffe164ec1eae3fcd48cc31237e59947e71430875c1",
+      "bytes": 43956
+    },
+    "circle": {
+      "sha256": "5e7c1169e7f79a8b06bf22f538d97dfaecefaf7e9d472e507730835e59721789",
+      "bytes": 42504
+    },
+    "lake": {
+      "sha256": "8fceaf485dcdaae26be0adcd0d2b261a90d31b463a1fdf73abdd26669d161830",
+      "bytes": 22064
+    },
+    "support": {
+      "sha256": "aae1f424b3e37e6889507a4188efa76be2548cef03ca5632e8f9ef1ec054589d",
+      "bytes": 10744
+    },
+    "backboard": {
+      "sha256": "e3619c61130fd5e85c27f73806c58b17fffc0ed9311fe09f026df39323a9f69d",
+      "bytes": 13080
+    },
+    "flag-stand": {
+      "sha256": "c8429690446e3f69163c135edf423a472442a0cad78ce7c1024b9e9e6b9d0228",
+      "bytes": 21960
+    },
+    "player": {
+      "sha256": "3c96dfe3c669a84ab7a90966d85e733f60294f8dc107081524f73302a602aa3f",
+      "bytes": 83956
+    },
+    "anchor": {
+      "sha256": "ee9dc6c89f976271565b3a2f9a9c7cba2d88924212abbdb14589876cf83c44c8",
+      "bytes": 88164
+    },
+    "operator": {
+      "sha256": "bc6f11986845214dfd11d4dabcb328a8c7d3b352548c8dd88f8d9f6176fbe5aa",
+      "bytes": 90504
+    },
+    "fan": {
+      "sha256": "e09894a10a920298b5c82123b85fba6a94ca2ddeb004f5635c4f772b65df4ab8",
+      "bytes": 90084
+    }
+  }
+}

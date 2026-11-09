@@ -27,13 +27,23 @@ the jersey or jacket, not the whole figure.
 
 ## Rebuild the library-built blockouts
 
-With a beret-parts checkout that has blockout `rig` support (including `joint:` pivots), car `spokes`, hoop `glass` and
-human `lod` (beret-parts `84cb2af` or later; Node ≥ 23.6, `pnpm install`
-done there):
+With a beret-parts (now Model Lab) checkout that has blockout `rig` support (including `joint:` pivots), car `spokes`,
+hoop `glass` and human `lod` (beret-parts `84cb2af` or later; Node ≥ 23.6, `pnpm install` done there), checked out
+cleanly at the commit you pin:
 
 ```sh
-BERET_PARTS=/path/to/beret-parts node scripts/blender/library-blockouts.mjs   # bakes, updates manifest.json, runs the lint
+BERET_PARTS=/path/to/beret-parts BERET_PARTS_COMMIT=<full 40-character sha> node scripts/blender/library-blockouts.mjs
 ```
+
+Before baking it checks that the checkout's HEAD is the pinned commit, that `assets`, `src`, `packages`,
+`package.json` and `pnpm-lock.yaml` are clean, and that the pinned `src/cli/main.ts` still has the `bake-blockouts`
+command; otherwise it stops with the reason and changes nothing. The producer bakes into a temporary folder; the GLBs,
+their `manifest.json` entries and `library-blockouts.provenance.json` (producer commit, package, Node version, recipe and
+output SHA-256) are written only when every recipe id comes back with the bytes it reported. Then the lint runs. Git inspection checks tracked/untracked changes in the listed paths; ignored dependencies are not certified. Output promotion is not a transaction: an I/O or later lint failure can leave changed outputs, so preserve/review the prior files before an authorized rebake.
+
+`node scripts/blender/library-provenance.mjs` checks the sidecar against the recipe, GLBs and manifest without a producer.
+The current GLBs predate the guard, so the sidecar records their hashes with the producer as unknown (the commit history
+claims beret-parts `84cb2af` for the people and race-car only). Treat any rebake as a visible output change to review.
 
 ## Rebuild the Blender-built blockouts
 
