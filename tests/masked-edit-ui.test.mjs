@@ -280,3 +280,32 @@ test('view never offers review or save from flags the server did not set', () =>
   assert.equal(maskedEditView(status('v', { state: 'submitted', job: { status: 'failed' }, canGenerate: false })).mode, 'job-failed');
   assert.equal(maskedEditView(status('v', { state: 'failed-local', canGenerate: false, canResume: true })).mode, 'resume');
 });
+
+
+test('a reopened dialog uses the server-persisted submit identity after an unknown response', async () => {
+  const editId = 'restart-submit', ids = [];
+  const server = fakeServer({ submit: (body, receipts) => {
+    ids.push(body.requestId);
+    receipts.set(editId, status(editId, { submitRequestId: body.requestId }));
+    throw new MaskedEditRequestError('No response', null);
+  } });
+  server.receipts.set(editId, status(editId));
+  const first = createMaskedEditSession({ request: server.request, storage: null, take, uuid: () => 'first-request' });
+  await first.load(editId); await first.generate({ allowance: 0.5, scopeChecked: true, unknownAck: true }); first.close();
+  const reopened = createMaskedEditSession({ request: server.request, storage: null, take, uuid: () => 'different-request' });
+  await reopened.load(editId);
+  assert.deepEqual(server.posts(), ['submit'], 'reopening only reads status');
+  await reopened.generate({ allowance: 0.5, scopeChecked: true, unknownAck: true });
+  assert.deepEqual(ids, ['first-request', 'first-request']);
+});
+
+
+test('a successful draft save arriving after close retains its pointer without reopening or drawing', async () => {
+  let release; const storage = memoryStorage(), changes = [], calls = [];
+  const session = createMaskedEditSession({ request: path => { calls.push(path); return new Promise(r => { release = r; }); }, storage, take, onChange: () => changes.push(1) });
+  const pending = session.prepare({ prompt: 'kept draft' }), before = changes.length;
+  session.close(); release({ ok: true, editId: 'late-saved', sourceSha256: SHA }); await pending;
+  assert.deepEqual(Array.from(session.saved(), p => p.editId), ['late-saved']);
+  assert.equal(session.state.status, null); assert.equal(changes.length, before);
+  assert.deepEqual(calls, ['prepare'], 'no status followup or other operation after close');
+});

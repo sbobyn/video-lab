@@ -108,6 +108,7 @@ export type MaskedEditStatus = {
   preservation?: { outsideExact?: boolean } | null;
   quote?: { estimate?: number | null; reservationRequiredUsd?: number | null } | null;
   quoteFingerprint?: string; inputKey?: string;
+  submitRequestId?: string | null;
   jobId?: string | null; job?: { status?: string } | null;
   needsResume?: boolean; canGenerate?: boolean; canResume?: boolean; canReview?: boolean; canAccept?: boolean;
   uncertain?: boolean; previewMissing?: boolean; preview?: { status?: string; message?: string } | null;
@@ -261,7 +262,7 @@ export function createMaskedEditSession(o: { request: MaskedEditRequest; storage
     const st = s.status;
     if (!st) return null;
     const v = maskedEditView(st), idle = !s.busy;
-    return { ...v, canGenerate: v.canGenerate && idle && !s.submitUnknown, canResume: v.canResume && idle, canRecordReview: v.canRecordReview && idle, canAccept: v.canAccept && idle };
+    return { ...v, canGenerate: v.canGenerate && idle && !s.submitUnknown, canResume: v.canResume && idle, canRecordReview: v.canRecordReview && idle, canAccept: v.canAccept && idle && !s.acceptUnknown };
   }
 
   return {
@@ -274,9 +275,9 @@ export function createMaskedEditSession(o: { request: MaskedEditRequest; storage
     prepare: (input: Record<string, unknown>) => run('prepare', async () => {
       try {
         const r = await o.request<any>('prepare', { ...input, projectId: o.take.projectId, shotId: o.take.shotId, sourceAssetId: o.take.sourceAssetId, sourceSha256: o.take.sourceSha256 });
-        if (s.closed) return;
-        if (!r?.ok || !r.editId) { s.note = r?.issues?.[0]?.text || 'This take is not eligible. Nothing was saved.'; return; }
+        if (!r?.ok || !r.editId) { if (s.closed) return; s.note = r?.issues?.[0]?.text || 'This take is not eligible. Nothing was saved.'; return; }
         const kept = rememberMaskedEditReceipt(o.storage, { projectId: o.take.projectId, shotId: o.take.shotId, sourceAssetId: o.take.sourceAssetId, sourceSha256: r.sourceSha256 || o.take.sourceSha256 || '', editId: r.editId });
+        if (s.closed) return; // retain a successful save's pointer without redrawing a closed dialog
         await readStatus(r.editId, kept.saved ? 'Draft saved on the local server.' : 'Draft saved on the local server; this browser could not remember it, so note edit ' + short(r.editId) + '.');
       } catch (e) { if (!s.closed) s.note = errText(e); }
     }),
@@ -287,7 +288,7 @@ export function createMaskedEditSession(o: { request: MaskedEditRequest; storage
       if (!a.scopeChecked || !a.unknownAck) { s.note = 'Confirm the region scope and the unknown-charge acknowledgement first. Nothing submitted.'; changed(); return Promise.resolve(false); }
       if (!Number.isFinite(reserve) || !st.quoteFingerprint) { s.note = 'No reliable estimate is saved for this draft. Nothing submitted.'; changed(); return Promise.resolve(false); }
       if (!(a.allowance >= reserve)) { s.note = 'The required reservation exceeds your run allowance. Nothing submitted.'; changed(); return Promise.resolve(false); }
-      const requestId = submitIds.get(st.editId) || uuid();
+      const requestId = st.submitRequestId || submitIds.get(st.editId) || uuid();
       submitIds.set(st.editId, requestId);
       return run('generate', async () => {
         try {
@@ -495,7 +496,7 @@ export async function openMaskedEdit(ctx: MaskedEditCtx, shotId: string, take: V
     if (!saved.length) return null;
     return h('div', { class: 'tk-edit-saved', role: 'group', 'aria-label': 'Saved region edits for this take' },
       h('p', { class: 'note' }, `Saved region edits for this take (remembered by this browser only, last ${MAX_RECEIPT_POINTERS} across projects):`),
-      ...saved.map(p => h('button', { type: 'button', class: 'btn sm', disabled: Boolean(session.state.busy), onclick: () => void session.load(p.editId) },
+      ...saved.map(p => h('button', { type: 'button', class: 'btn sm', disabled: Boolean(session.state.busy), onclick: () => { scopeChecked = false; unknownAck = false; void session.load(p.editId); } },
         `Open edit ${short(p.editId)} · ${new Date(p.savedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}`)));
   }
 
@@ -561,7 +562,7 @@ export async function openMaskedEdit(ctx: MaskedEditCtx, shotId: string, take: V
   function drawServer(st: MaskedEditStatus) {
     const v = session.view()!, busy = session.state.busy;
     const refresh = h('button', { type: 'button', class: 'btn', disabled: Boolean(busy), onclick: () => void session.refresh() }, busy === 'status' ? 'Refreshing…' : 'Refresh status');
-    const other = h('button', { type: 'button', class: 'btn ghost', disabled: Boolean(busy), onclick: () => { crop = null; session.startNewDraft(); } }, 'New draft (keeps this one)');
+    const other = h('button', { type: 'button', class: 'btn ghost', disabled: Boolean(busy), onclick: () => { crop = null; scopeChecked = false; unknownAck = false; session.startNewDraft(); } }, 'New draft (keeps this one)');
     const quoteLine = Number.isFinite(Number(st.quote?.estimate))
       ? `Estimated $${Number(st.quote!.estimate).toFixed(2)} · reserves $${Number(st.quote!.reservationRequiredUsd ?? 0).toFixed(2)}` : 'No reliable estimate saved';
     const summary = h('dl', { class: 'tk-facts tk-edit-summary' },
