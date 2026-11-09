@@ -35,8 +35,10 @@ test('home page: one Import… takes a project export or a shared asset', () => 
 });
 
 test('docs: README, guide and glossary describe the library', () => {
-  assert.match(read('README.md'), /## Asset library/); assert.match(read('README.md'), /`PREVIS_LIBRARY_DIR`/);
-  assert.match(read('README.md'), /previs_library_list/);
+  // The concise README links to the maintained guides rather than duplicating their sections.
+  assert.match(read('README.md'), /\[shared library\]\(docs\/director\.md#library-reuse-objects-across-projects\)/);
+  assert.match(read('README.md'), /\[MCP agent setup\]\(docs\/agent-setup\.md\)/);
+  assert.match(read('docs/setup.md'), /`PREVIS_LIBRARY_DIR`/);
   assert.match(read('docs/director.md'), /## Library: reuse objects across projects/);
   assert.match(read('docs/glossary.md'), /\| \*\*Shared asset\*\* \|/); assert.match(read('docs/glossary.md'), /\| \*\*@handle\*\* \|/);
 });
