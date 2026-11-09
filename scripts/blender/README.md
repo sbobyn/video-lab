@@ -35,11 +35,11 @@ cleanly at the commit you pin:
 BERET_PARTS=/path/to/beret-parts BERET_PARTS_COMMIT=<full 40-character sha> node scripts/blender/library-blockouts.mjs
 ```
 
-Before running anything it checks that the checkout's HEAD is the pinned commit, that `assets`, `src`, `packages`,
+Before baking it checks that the checkout's HEAD is the pinned commit, that `assets`, `src`, `packages`,
 `package.json` and `pnpm-lock.yaml` are clean, and that the pinned `src/cli/main.ts` still has the `bake-blockouts`
 command; otherwise it stops with the reason and changes nothing. The producer bakes into a temporary folder; the GLBs,
 their `manifest.json` entries and `library-blockouts.provenance.json` (producer commit, package, Node version, recipe and
-output SHA-256) are written only when every recipe id comes back with the bytes it reported. Then the lint runs.
+output SHA-256) are written only when every recipe id comes back with the bytes it reported. Then the lint runs. Git inspection checks tracked/untracked changes in the listed paths; ignored dependencies are not certified. Output promotion is not a transaction: an I/O or later lint failure can leave changed outputs, so preserve/review the prior files before an authorized rebake.
 
 `node scripts/blender/library-provenance.mjs` checks the sidecar against the recipe, GLBs and manifest without a producer.
 The current GLBs predate the guard, so the sidecar records their hashes with the producer as unknown (the commit history

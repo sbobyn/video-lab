@@ -3,7 +3,7 @@
 //   node scripts/blender/library-provenance.mjs   # checks the sidecar against the recipe, GLBs and manifest; exit 1 on drift
 // The sidecar (library-blockouts.provenance.json) records the recipe SHA-256, each library output's SHA-256 and bytes, and
 // the producer identity. public/models/blockouts/manifest.json keeps its consumer schema ({ shape, triangles, bytes }).
-// requireProducer() is the guard library-blockouts.mjs runs before any child process or write.
+// requireProducer() inspects Git before library-blockouts.mjs runs the producer or writes outputs.
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -46,6 +46,7 @@ export async function verifyProvenance(root) {
   for (const [id, o] of Object.entries(now.outputs)) {
     const s = sidecar.outputs?.[id];
     if (s && s.sha256 !== o.sha256) problems.push(`${id}.glb sha256 ${o.sha256} != sidecar ${s.sha256}`);
+    if (s && s.bytes !== o.bytes) problems.push(`${id}.glb is ${o.bytes} bytes; sidecar says ${s.bytes}`);
     if (manifest[id]?.bytes !== o.bytes) problems.push(`${id}.glb is ${o.bytes} bytes; manifest.json says ${manifest[id]?.bytes}`);
   }
   return problems;

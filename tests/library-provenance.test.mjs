@@ -117,6 +117,11 @@ test('a pinned bake copies outputs, keeps the manifest schema and other ids, and
     assert.ok(!bake[bake.indexOf('--out') + 1].startsWith(root));
     assert.deepEqual(bakes(calls)[1].slice(1), ['scripts/blender/lint-blockouts.mjs']);
     assert.deepEqual(await verifyProvenance(root), []);
+    // The verifier checks recorded sizes as well as content hashes.
+    const stale = structuredClone(sidecar); stale.outputs.b.bytes++;
+    await writeFile(join(root, SIDECAR), JSON.stringify(stale));
+    assert.match((await verifyProvenance(root)).join('\n'), /b\.glb is 7 bytes; sidecar says 8/);
+    await writeFile(join(root, SIDECAR), JSON.stringify(sidecar));
     // The verifier catches a changed output.
     await writeFile(join(root, OUT, 'b.glb'), 'new-bbX');
     assert.match((await verifyProvenance(root)).join('\n'), /b\.glb sha256 .* != sidecar/);

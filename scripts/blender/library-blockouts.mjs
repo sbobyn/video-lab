@@ -4,7 +4,7 @@
 // Bakes every id in scripts/blender/library-blockouts.json (family, preset/params, seed, video-lab shape, minScale) into
 // public/models/blockouts, updates those manifest entries, writes library-blockouts.provenance.json, then runs the
 // coplanar lint. People, animals and terrain stay on generate-blockouts.py, which skips the ids listed here.
-// Before any child process or write it requires the checkout to be clean at the pinned commit with the expected command
+// Before invoking the producer or writing outputs it requires the checkout to be clean at the pinned commit with the expected command
 // (library-provenance.mjs). The producer bakes into a temporary folder; nothing in this repo changes unless every id
 // comes back with the bytes it reported.
 import { execFileSync } from 'node:child_process';
