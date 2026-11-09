@@ -2,7 +2,7 @@
 // decode and encode seams; no ffmpeg, no provider, no generation dispatch. Synthetic two-frame fixtures.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
@@ -110,12 +110,12 @@ test('restart resume of a later-completed uncertain job -> review -> accept keep
   await writeFile(join(data, 'assets', 'patch.mp4'), patchBytes);
   const job = { id: jobId, status: 'uncertain', purpose: 'masked-edit-patch', results: [] };
 
-  let dispatch = 0, decodes = 0, previews = 0, encodes = 0, hold = null;
+  let dispatch = 0, decodes = 0, previews = 0, encodes = 0, hold = null, previewHold = null;
   const opts = {
     generation: { list: () => [structuredClone(job)], route: async () => { dispatch++; throw Error('Forbidden dispatch'); } },
     probeVideo: async () => ({ width: 1280, height: 720, fps: 24, frameCount: 2, audio: false }),
     decodeFrames: async (file, w, h, n) => { decodes++; return Array.from({ length: n }, () => rgbFrame(w, h, file.endsWith('patch.mp4') ? [180, 10, 30] : [20, 30, 40])); },
-    encodePreview: async (_receipt, file) => { previews++; await writeFile(file, Buffer.from('synthetic preview')); return file; },
+    encodePreview: async (_receipt, file) => { previews++; if (previewHold) await previewHold.promise; await writeFile(file, Buffer.from('synthetic preview')); return file; },
     encode: async ({ outMp4, width, height, fps, frameCount }) => {
       encodes++;
       if (hold) await hold.promise;
@@ -169,9 +169,20 @@ test('restart resume of a later-completed uncertain job -> review -> accept keep
   let release; hold = { promise: new Promise(r => { release = r; }) };
   const accepting = api.accept({ ...input, candidateSha256: ready.candidateSha256, reviewId, expectedRevision: revisionBefore });
   while (!encodes) await new Promise(r => setImmediate(r));
+  // A concurrent preview retry must wait for acceptance and read its latest receipt, rather than
+  // overwriting 'accepted' with the ready-for-review snapshot it read before encoding.
+  await unlink(join(dir, 'candidate.mp4'));
+  let releasePreview;
+  previewHold = { promise: new Promise(r => { releasePreview = r; }) };
+  const resuming = api.resume(input);
+  await new Promise(r => setImmediate(r));
   await director.edit(p.id, [{ op: 'update_shot', id: shotId, patch: { title: 'Retitled during accept' } }]);
   release();
   const accepted = await accepting;
+  releasePreview();
+  assert.equal((await resuming).state, 'accepted', 'preview retry cannot roll back accepted receipt');
+  assert.equal((await api.loadReceipt(editId)).state, 'accepted');
+  assert.equal(previews, 1, 'queued retry sees accepted state and does not encode another preview');
   assert.equal(accepted.replay, false);
 
   proj = await director.get(p.id);

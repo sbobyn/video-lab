@@ -120,7 +120,7 @@ async function encodeComposite({ rawPath, outMp4, width, height, fps, frameCount
 
 export function openMaskedEdit(dataRoot, director, { log = () => {}, generation = null, engineProject = null, encode = encodeComposite, probeVideo = inspectOutputVideo, decodeFrames = null, encodePreview = null } = {}) {
   const root = resolve(dataRoot);
-  const acceptLock = keyedLock(); // one acceptance at a time per edit; different edits run concurrently
+  const editLock = keyedLock(); // receipt mutations stay ordered per edit; different edits run concurrently
   const editsRoot = join(root, 'masked-edits');
   const genRoute = generation?.route ? (op, input) => generation.route(`/api/generation/${op}`, input) : null;
 
@@ -420,7 +420,9 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
    * Local-only advance after a quarantined Cloud patch completes (or after failed-local).
    * Never calls generation quote/submit/bind — no Cloud POST.
    */
-  async function resume({ projectId, editId } = {}) {
+  const resume = (input = {}) => editLock(String(input.editId || ''), () => resumeOnce(input));
+
+  async function resumeOnce({ projectId, editId } = {}) {
     assertUuid(projectId, 'projectId');
     assertUuid(editId, 'editId');
     let receipt = await loadReceipt(editId);
@@ -677,7 +679,9 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
    * Paid boundary: materialize crop/mask, quote via generation, submit with explicit approval.
    * Reuses generation's reservation/dedup/dispatch — no parallel Cloud client.
    */
-  async function submit(input = {}) {
+  const submit = (input = {}) => editLock(String(input.editId || ''), () => submitOnce(input));
+
+  async function submitOnce(input = {}) {
     if (!genRoute || !engineProject) fail('Masked-edit submit requires the generation authority', 503, 'no-submit');
     const editId = assertUuid(input.editId, 'editId');
     const projectId = assertUuid(input.projectId, 'projectId');
@@ -841,7 +845,9 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
     return { editId, state: receipt.state, candidateSha256, preservation: report };
   }
 
-  async function review(input = {}) {
+  const review = (input = {}) => editLock(String(input.editId || ''), () => reviewOnce(input));
+
+  async function reviewOnce(input = {}) {
     const projectId = assertUuid(input.projectId, 'projectId');
     const editId = assertUuid(input.editId, 'editId');
     const candidateSha256 = String(input.candidateSha256 || '');
@@ -876,7 +882,7 @@ export function openMaskedEdit(dataRoot, director, { log = () => {}, generation 
     return { reviewId, editId, state: receipt.state, candidateSha256, sourceSha256 };
   }
 
-  const accept = (input = {}) => acceptLock(String(input.editId || ''), () => acceptOnce(input));
+  const accept = (input = {}) => editLock(String(input.editId || ''), () => acceptOnce(input));
 
   async function acceptOnce(input = {}) {
     const projectId = assertUuid(input.projectId, 'projectId');
