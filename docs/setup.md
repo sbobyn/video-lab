@@ -87,7 +87,17 @@ No migration or implementation is authorized by this documentation proposal alon
    need to be chosen again.
 
 Fresh-install scene ZIP/reopen evidence exists in [review-version.md](review-version.md).
-A complete external-store backup/restore and upgrade/rollback drill remains untested.
+Synthetic store drill (2026-11-09, source 9916b96, `tests/store-backup-restore.test.mjs`):
+separately configured data, library and budget directories plus a private
+configuration file are written by the production stores, copied after the project lock
+is released, and restored into new directories. Every file matches by size and SHA-256;
+the same readers return the project identity, edits, look image, library asset, budget
+caps/ledger and a simulated generation receipt, and a restored export lists the same
+files. A harmless edit to the restored copy is undone by restoring the pre-change backup
+on the same version; the original and backup are never written. Not covered: real user
+data or accounts, other server-written folders (batches, refgen, masked edits, renders),
+browser preferences, live servers, cross-version upgrade/migration or downgrade, and
+human acceptance.
 
 ## Git update exceptions
 
